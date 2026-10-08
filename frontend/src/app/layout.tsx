@@ -1,26 +1,20 @@
 import type { Metadata } from "next";
+import { AuthProvider } from "@/components/auth-provider";
+import "leaflet/dist/leaflet.css";
 import "./globals.css";
-import { ThemeProvider } from "@/components/providers/theme-provider";
 
 export const metadata: Metadata = {
-  title: {
-    default: "SevaAI Manipur",
-    template: "%s | SevaAI Manipur",
-  },
+  title: "Dashboard | SevaAI Manipur",
   description:
-    "AI-Powered Welfare & Public Service Gap Intelligence Platform",
+    "Synthetic demo dashboard for welfare and public service gap intelligence in Manipur.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body>
-        <ThemeProvider>{children}</ThemeProvider>
-      </body>
+    <html lang="en" className="h-full antialiased">
+      <body className="flex min-h-full flex-col"><AuthProvider>
+      {children}
+    </AuthProvider></body>
     </html>
   );
 }
