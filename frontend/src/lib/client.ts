@@ -1,17 +1,16 @@
 const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
 
-if (!configuredApiUrl) {
-  throw new Error(
-    "NEXT_PUBLIC_API_URL is not configured. Add it to the frontend environment."
-  );
-}
-
-const API_URL: string = configuredApiUrl;
+export const hasApiConfiguration = Boolean(configuredApiUrl);
 
 function getApiBaseUrl(): string {
-  if (typeof window === "undefined") return API_URL;
+  if (!configuredApiUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL is not configured. Use local demo access or configure the API URL.",
+    );
+  }
+  if (typeof window === "undefined") return configuredApiUrl;
 
-  const url = new URL(API_URL);
+  const url = new URL(configuredApiUrl);
   const isLoopback = url.hostname === "localhost" || url.hostname === "127.0.0.1";
   const pageIsLoopback =
     window.location.hostname === "localhost" ||

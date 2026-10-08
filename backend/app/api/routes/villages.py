@@ -30,7 +30,7 @@ def _database_error() -> HTTPException:
 @router.get("/villages", response_model=VillagePage)
 def list_villages(
     page: int = Query(default=1, ge=1),
-    limit: int = Query(default=50, ge=1, le=100),
+    limit: int = Query(default=50, ge=1, le=500),
     district: str | None = Query(default=None, min_length=1, max_length=100),
     block: str | None = Query(default=None, min_length=1, max_length=100),
     db: Session = Depends(get_db),

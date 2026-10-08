@@ -1,13 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useParams } from "next/navigation";
 import { AppShell, PageHeading } from "@/components/app-shell";
 import { DataState } from "@/components/data-state";
-import { apiRequest } from "@/lib/client";
+import { apiRequest, hasApiConfiguration } from "@/lib/client";
+import {
+  isLocalDemoSession,
+  subscribeLocalDemoState,
+} from "@/lib/local-passkey";
 import {
   formatPercent,
+  localDemoVillages,
   overallCoverage,
   overallHistoricalCoverage,
   services,
@@ -18,6 +23,11 @@ import type { Village } from "@/types/village";
 export default function VillageDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const localDemo = useSyncExternalStore(
+    subscribeLocalDemoState,
+    isLocalDemoSession,
+    () => false,
+  );
   const [result, setResult] = useState<{
     id: string;
     village: Village | null;
@@ -26,6 +36,8 @@ export default function VillageDetailPage() {
 
   useEffect(() => {
     const controller = new AbortController();
+    if (!hasApiConfiguration || localDemo) return () => controller.abort();
+
     apiRequest<Village>(`/api/v1/villages/${encodeURIComponent(id)}`, { signal: controller.signal })
       .then((village) => setResult({ id, village, error: null }))
       .catch((requestError: unknown) => {
@@ -37,11 +49,17 @@ export default function VillageDetailPage() {
         });
       });
     return () => controller.abort();
-  }, [id]);
+  }, [id, localDemo]);
 
-  const loading = result?.id !== id;
-  const village = result?.id === id ? result.village : null;
-  const error = result?.id === id ? result.error : null;
+  const demoMode = !hasApiConfiguration || localDemo;
+  const demoVillage = demoMode
+    ? localDemoVillages.find((item) => item.village_id === id) ?? null
+    : null;
+  const loading = !demoMode && result?.id !== id;
+  const village = demoMode
+    ? demoVillage
+    : result?.id === id ? result.village : null;
+  const error = demoMode ? null : result?.id === id ? result.error : null;
   const largestGap = village
     ? services.map((service) => ({ ...service, gap: serviceGap(village, service.key) }))
         .sort((a, b) => b.gap - a.gap)[0]
@@ -62,7 +80,7 @@ export default function VillageDetailPage() {
             <article className="metric-card"><div className="metric-icon metric-icon-rose">!</div><div className="metric-value">{largestGap?.label ?? "—"}</div><div className="metric-label">Largest service gap</div><div className="metric-note">{largestGap ? `${formatPercent(largestGap.gap)} of eligible households uncovered` : "No service data"}</div></article>
           </section>
           <section className="panel service-detail-panel">
-            <div className="section-heading"><div><div className="section-eyebrow">SERVICE COVERAGE</div><h2>Eligible, covered and uncovered households</h2><p>Coverage and gap percentages are from this village&apos;s API record.</p></div></div>
+            <div className="section-heading"><div><div className="section-eyebrow">SERVICE COVERAGE</div><h2>Eligible, covered and uncovered households</h2><p>Coverage and gap percentages are calculated from this village record.</p></div></div>
             <div className="table-scroll"><table><thead><tr><th>SERVICE</th><th>ELIGIBLE</th><th>COVERED</th><th>COVERAGE</th><th>GAP</th><th>HISTORICAL COVERAGE</th></tr></thead><tbody>
               {services.map((service) => (
                 <tr key={service.key}><td><strong>{service.label}</strong></td><td>{village[service.eligible].toLocaleString()}</td><td>{village[service.covered].toLocaleString()}</td><td>{formatPercent(village[service.coverage])}</td><td>{formatPercent(serviceGap(village, service.key))}</td><td>{formatPercent(village[service.historical])}</td></tr>

@@ -1,8 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
+
+import { ApiError, apiRequest, hasApiConfiguration } from "@/lib/client";
+import {
+  isLocalDemoSession,
+  signOutOfLocalDemo,
+  subscribeLocalDemoState,
+} from "@/lib/local-passkey";
 
 const links = [
   { label: "Dashboard", href: "/dashboard", icon: "▦" },
@@ -21,7 +28,38 @@ export function AppShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
+  const localDemo = useSyncExternalStore(
+    subscribeLocalDemoState,
+    () => !hasApiConfiguration || isLocalDemoSession(),
+    () => !hasApiConfiguration,
+  );
+
+  async function handleSignOut() {
+    setSignOutError("");
+    if (localDemo || !hasApiConfiguration || isLocalDemoSession()) {
+      signOutOfLocalDemo();
+      router.replace("/login");
+      return;
+    }
+    try {
+      await apiRequest<void>("/api/v1/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      router.replace("/login");
+    } catch (error) {
+      setSignOutError(
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Unable to sign out. Please try again.",
+      );
+    }
+  }
 
   return (
     <div className="dashboard-shell">
@@ -76,14 +114,19 @@ export function AppShell({
           <div className="sidebar-help">
             <div className="help-icon" aria-hidden="true">✳</div>
             <strong>Built for better decisions</strong>
-            <p>Live village coverage and pending-case indicators from connected APIs.</p>
-            <Link href="/login">Sign out <span aria-hidden="true">↗</span></Link>
+            <p>{localDemo ? "Synthetic village data for local page previews." : "Live village coverage and pending-case indicators from connected APIs."}</p>
+            <button className="signout-button" onClick={handleSignOut} type="button">
+              Sign out <span aria-hidden="true">↗</span>
+            </button>
+            {signOutError && (
+              <p className="signout-error" role="alert">{signOutError}</p>
+            )}
           </div>
           <div className="profile">
             <div className="avatar">AD</div>
             <div className="profile-copy">
-              <strong>Authenticated user</strong>
-              <span>Signed in through the API</span>
+              <strong>{localDemo ? "Local demo access" : "Authenticated user"}</strong>
+              <span>{localDemo ? "Device passkey · synthetic data" : "Signed in through the API"}</span>
             </div>
           </div>
         </div>
@@ -107,8 +150,8 @@ export function AppShell({
             </div>
           </div>
           <div className="topbar-actions">
-            <span className="topbar-date">Data source <strong>FastAPI</strong></span>
-            <span className="demo-topbar-badge">LIVE API</span>
+            <span className="topbar-date">Data source <strong>{localDemo ? "Local demo" : "FastAPI"}</strong></span>
+            <span className="demo-topbar-badge">{localDemo ? "SYNTHETIC DATA" : "LIVE API"}</span>
           </div>
         </header>
         <div className="dashboard-content">{children}</div>

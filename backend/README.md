@@ -1,6 +1,6 @@
 # SevaAI Manipur backend
 
-This backend currently provides the minimal FastAPI API foundation and the PostgreSQL/PostGIS schema connection. Authentication, AI/ML, analytics, interventions, alerts, and production government data integration are out of scope.
+This backend provides the FastAPI API foundation, PostgreSQL/PostGIS schema connection, and administrator-only session authentication. AI/ML, analytics, interventions, alerts, and production government data integration are out of scope.
 
 ## Synthetic data warning
 
@@ -22,6 +22,8 @@ Copy-Item .env.example .env
 
 Edit `.env` before starting the database. It is ignored by Git. The Compose service uses the `postgis/postgis:16-3.5` image, creates a persistent named volume, and publishes PostgreSQL on port `5432` by default. Set `POSTGRES_PORT` in `.env` if that host port is already in use.
 
+Set `ADMIN_USER_ID=admin01` and `ADMIN_PASSWORD` in this local `.env` file. Never commit the admin password. Set `AUTH_COOKIE_SECURE=true` when deploying over HTTPS.
+
 `DATABASE_URL` configures the host-run FastAPI application. Keep its user/password synchronized with `POSTGRES_USER` and `POSTGRES_PASSWORD`. URL-encode special characters in URL credentials. Never commit `.env` or use the example password for a shared deployment.
 
 Start the service and wait for its health check:
@@ -32,6 +34,12 @@ docker compose ps
 ```
 
 On the first start for an empty volume, the image executes `backend/database/init.sql`, which enables PostGIS, creates the `villages` table and geometry column, and builds district, block, and spatial indexes. Initialization scripts run only when PostgreSQL initializes a new data directory. To reapply a changed schema during local development, reset the volume as described below.
+
+For an existing database volume, apply the authentication tables as an additive migration:
+
+```powershell
+docker compose exec -T db bash -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /database/auth.sql'
+```
 
 ## Import or re-import the existing CSV
 
@@ -96,6 +104,16 @@ Ensure PostgreSQL is running and `.env` contains a valid `DATABASE_URL`. From th
 ```
 
 Interactive Swagger documentation is at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs); OpenAPI JSON is at `/openapi.json`.
+
+Create the initial administrator account once after applying the schema. This command reads `ADMIN_USER_ID` and `ADMIN_PASSWORD` from the root `.env` file and will not overwrite an existing account:
+
+```powershell
+Set-Location backend
+.\.venv\Scripts\python.exe -m app.scripts.bootstrap_admin
+Set-Location ..
+```
+
+Authentication endpoints are `POST /api/v1/auth/login` (JSON `user_id` and `password`), `GET /api/v1/auth/me`, and `POST /api/v1/auth/logout`. Public signup is intentionally disabled.
 
 ## Test the API
 

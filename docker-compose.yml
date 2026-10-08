@@ -11,6 +11,7 @@ services:
     volumes:
       - sevaai_postgres_data:/var/lib/postgresql/data
       - ./backend/database/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+      - ./backend/database/auth.sql:/database/auth.sql:ro
       - ./backend/database/import_csv.sh:/database/import_csv.sh:ro
       - ./backend/database/verify_database.sh:/database/verify_database.sh:ro
       - ./backend/database/verify.sql:/database/verify.sql:ro

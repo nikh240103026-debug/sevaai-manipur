@@ -232,8 +232,29 @@ button {
   font-weight: 650;
 }
 
+.sidebar-help > .signout-button {
+  padding: 0;
+  color: #5969d2;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.sidebar-help > .signout-button:hover {
+  color: #3f51bf;
+}
+
 .sidebar-help > a span {
   margin-left: 2px;
+}
+
+.sidebar-help .signout-error {
+  margin: 7px 0 0;
+  color: #bd5555;
+  font-size: 9px;
+  line-height: 1.45;
 }
 
 .profile {
@@ -1780,9 +1801,25 @@ button {
     font-size: 11px;
   }
 
+  .login-submit:disabled {
+    cursor: wait;
+    opacity: .7;
+  }
+
   .login-submit span {
     margin-left: auto;
     font-size: 16px;
+  }
+
+  .login-feedback {
+    margin: 4px 0 0;
+    padding: 10px 11px;
+    color: #a74444;
+    background: #fff4f3;
+    border: 1px solid #f6dfdd;
+    border-radius: 6px;
+    font-size: 10px;
+    line-height: 1.5;
   }
 
   .login-footnote {
@@ -1791,6 +1828,78 @@ button {
     text-align: center;
     font-size: 9px;
   }
+
+.auth-loading,
+.auth-unavailable {
+  display: grid;
+  min-height: 100vh;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px;
+  color: #68748a;
+  background: #f5f7fb;
+  text-align: center;
+}
+
+.auth-loading-indicator {
+  width: 25px;
+  height: 25px;
+  border: 3px solid #dfe4f1;
+  border-top-color: #596be8;
+  border-radius: 50%;
+  animation: auth-spin 800ms linear infinite;
+}
+
+.loading-bar {
+  position: relative;
+  display: block;
+  width: min(100%, 280px);
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e4e8f3;
+}
+
+.loading-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #596be8, #55b7a5);
+  animation: loading-bar-progress 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-bar-progress {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(370%);
+  }
+}
+
+.auth-unavailable h1 {
+  margin: 0;
+  color: #273248;
+  font-size: 20px;
+}
+
+.auth-unavailable p {
+  margin: 0;
+}
+
+.auth-unavailable a {
+  color: #5969d2;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
   .standalone-map-panel,
   .analytics-district-panel,
@@ -2914,9 +3023,16 @@ button {
     scroll-behavior: auto !important;
     transition-duration: .01ms !important;
   }
+
+  .loading-bar > span {
+    animation: none;
+    width: 100%;
+  }
 }
 
 .data-state {
+  display: grid;
+  gap: 12px;
   margin: 16px 0;
   padding: 18px 20px;
   color: #69758b;

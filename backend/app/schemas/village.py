@@ -1,5 +1,4 @@
 from datetime import date
-from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -18,22 +17,22 @@ class VillageResponse(BaseModel):
     eligible_households: int
     housing_eligible: int
     housing_covered: int
-    housing_coverage: Decimal
+    housing_coverage: float
     health_eligible: int
     health_covered: int
-    health_coverage: Decimal
+    health_coverage: float
     water_eligible: int
     water_covered: int
-    water_coverage: Decimal
+    water_coverage: float
     welfare_eligible: int
     welfare_covered: int
-    welfare_coverage: Decimal
+    welfare_coverage: float
     pending_cases: int
-    pending_rate: Decimal
-    historical_water_coverage: Decimal
-    historical_health_coverage: Decimal
-    historical_housing_coverage: Decimal
-    historical_welfare_coverage: Decimal
+    pending_rate: float
+    historical_water_coverage: float
+    historical_health_coverage: float
+    historical_housing_coverage: float
+    historical_welfare_coverage: float
     latitude: float
     longitude: float
     data_date: date

@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api.routes.auth import router as auth_router
 from app.api.routes.villages import router as villages_router
 from app.core.config import get_settings
 from app.db.database import get_engine
@@ -25,11 +26,12 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
-    allow_credentials=False,
-    allow_methods=["GET"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 app.include_router(villages_router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
 
 
 @app.get("/")

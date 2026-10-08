@@ -1,6 +1,8 @@
 import { AppShell, PageHeading } from "@/components/app-shell";
 import MapCanvas from "@/components/map-canvas";
 
+export const instant = false;
+
 export default function MapPage() {
   return (
     <AppShell title="Map">
@@ -19,7 +21,7 @@ export default function MapPage() {
           </div>
         </div>
         <MapCanvas />
-        <p className="data-note">Village locations come from GET /api/v1/map/villages. Service metrics are joined from the paginated village API. Backend priority fields are not currently returned.</p>
+        <p className="data-note">Village locations and service metrics use live API records or bundled synthetic records in local demo mode. Backend priority fields are not currently returned.</p>
       </section>
     </AppShell>
   );

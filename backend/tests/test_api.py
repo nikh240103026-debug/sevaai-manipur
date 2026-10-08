@@ -171,17 +171,21 @@ def test_health_reports_database_unavailable(monkeypatch: pytest.MonkeyPatch) ->
 def test_list_villages_and_filters(client: Any) -> None:
     test_client, session = client
     response = test_client.get(
-        "/api/v1/villages?page=1&limit=10&district=Bishnupur&block=Bishnupur"
+        "/api/v1/villages?page=1&limit=500&district=Bishnupur&block=Bishnupur"
     )
     assert response.status_code == 200
     assert response.json()["items"][0]["village_id"] == "MAN-BIS-01-001"
+    assert response.json()["limit"] == 500
     assert response.json()["total"] == 1
+    assert isinstance(response.json()["items"][0]["housing_coverage"], float)
+    assert isinstance(response.json()["items"][0]["pending_rate"], float)
+    assert isinstance(response.json()["items"][0]["historical_housing_coverage"], float)
     assert "lower(villages.district)" in session.statements[0]
     assert "lower(villages.block)" in session.statements[0]
     assert "geom" not in response.json()["items"][0]
 
 
-@pytest.mark.parametrize("query", ["page=0", "limit=0", "limit=101"])
+@pytest.mark.parametrize("query", ["page=0", "limit=0", "limit=501"])
 def test_invalid_pagination_returns_422(client: Any, query: str) -> None:
     test_client, _ = client
     assert test_client.get(f"/api/v1/villages?{query}").status_code == 422

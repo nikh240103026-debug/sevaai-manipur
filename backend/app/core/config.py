@@ -10,6 +10,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 class Settings(BaseSettings):
     database_url: str | None = None
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    admin_user_id: str = "admin01"
+    admin_password: str | None = None
+    auth_cookie_secure: bool = False
 
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
