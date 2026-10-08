@@ -1,13 +1,15 @@
+from dataclasses import dataclass
 from decimal import Decimal
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api.dependencies import require_authenticated_user
 from app.api.routes.analytics import get_db
 from app.main import app
+from app.models.user import User, UserRole
 from app.schemas.analytics import PriorityLevel
 from app.services.analytics import (
     AVERAGE_GAP_WEIGHT,
@@ -21,11 +23,28 @@ from app.services.analytics import (
 )
 
 
+@dataclass
+class AnalyticsVillage:
+    village_id: str
+    village: str
+    district: str
+    block: str
+    pending_rate: Decimal
+    housing_coverage: Decimal
+    health_coverage: Decimal
+    water_coverage: Decimal
+    welfare_coverage: Decimal
+    historical_housing_coverage: Decimal
+    historical_health_coverage: Decimal
+    historical_water_coverage: Decimal
+    historical_welfare_coverage: Decimal
+
+
 def make_village(
     current: Decimal = Decimal("80.00"),
     historical: Decimal = Decimal("85.00"),
     pending_rate: Decimal = Decimal("10.00"),
-) -> SimpleNamespace:
+) -> AnalyticsVillage:
     values: dict[str, Any] = {
         "village_id": "MAN-BIS-01-001",
         "village": "Bishnupur Demo Village 001",
@@ -36,7 +55,7 @@ def make_village(
     for service in ("housing", "health", "water", "welfare"):
         values[f"{service}_coverage"] = current
         values[f"historical_{service}_coverage"] = historical
-    return SimpleNamespace(**values)
+    return AnalyticsVillage(**values)
 
 
 def test_base_weights_total_one_hundred_percent() -> None:
@@ -180,11 +199,12 @@ def test_score_calculation_is_deterministic_and_decimal_based() -> None:
 
 
 class AnalyticsSession:
-    def __init__(self, village: SimpleNamespace | None):
+    def __init__(self, village: AnalyticsVillage | None):
         self.village = village
         self.fail = False
 
-    def get(self, _model: Any, village_id: str) -> SimpleNamespace | None:
+    def get(self, model: Any, village_id: str) -> AnalyticsVillage | None:
+        assert model is not None
         if self.fail:
             raise SQLAlchemyError("simulated database query failure")
         if self.village is not None and village_id == self.village.village_id:
@@ -200,6 +220,16 @@ def analytics_client() -> Any:
         yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[require_authenticated_user] = lambda: User(
+        id=1,
+        username="test-admin",
+        password_hash="not-used",
+        full_name="Test Admin",
+        role=UserRole.STATE_ADMIN,
+        district=None,
+        block=None,
+        is_active=True,
+    )
     with TestClient(app) as test_client:
         yield test_client, session
     app.dependency_overrides.clear()

@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import authorize_village_access, require_authenticated_user
 from app.db.database import get_db
 from app.models.village import Village
+from app.models.user import User
 from app.schemas.analytics import VillageAnalytics
-from app.services.analytics import build_village_analytics
+from app.services.analytics import VillageAnalyticsInput, build_village_analytics
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -26,6 +28,7 @@ router = APIRouter()
 )
 def get_village_analytics(
     village_id: str,
+    user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db),
 ) -> VillageAnalytics:
     try:
@@ -42,5 +45,21 @@ def get_village_analytics(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Village not found",
         )
+    authorize_village_access(user, village)
 
-    return build_village_analytics(village)
+    analytics_input = VillageAnalyticsInput(
+        village_id=village.village_id,
+        village=village.village,
+        district=village.district,
+        block=village.block,
+        housing_coverage=village.housing_coverage,
+        health_coverage=village.health_coverage,
+        water_coverage=village.water_coverage,
+        welfare_coverage=village.welfare_coverage,
+        historical_housing_coverage=village.historical_housing_coverage,
+        historical_health_coverage=village.historical_health_coverage,
+        historical_water_coverage=village.historical_water_coverage,
+        historical_welfare_coverage=village.historical_welfare_coverage,
+        pending_rate=village.pending_rate,
+    )
+    return build_village_analytics(analytics_input)

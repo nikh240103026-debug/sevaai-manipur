@@ -6,13 +6,15 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from geoalchemy2 import Geometry
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api.dependencies import require_authenticated_user
 from app.api.routes.villages import get_db
-from app.db import database
 from app import main as main_module
 from app.main import app
+from app.models.user import User, UserRole
 from app.models.village import Village
 
 
@@ -91,7 +93,9 @@ class FakeSession:
         self._record(statement)
         return MapResult(self.village)
 
-    def get(self, _model: Any, village_id: str) -> SimpleNamespace | None:
+    def get(self, model: Any, village_id: str) -> SimpleNamespace | None:
+        if model is not Village:
+            raise AssertionError("Unexpected model lookup")
         self._record("get village")
         return self.village if village_id == self.village.village_id else None
 
@@ -114,6 +118,16 @@ def client() -> Any:
         yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[require_authenticated_user] = lambda: User(
+        id=1,
+        username="test-admin",
+        password_hash="not-used",
+        full_name="Test Admin",
+        role=UserRole.STATE_ADMIN,
+        district=None,
+        block=None,
+        is_active=True,
+    )
     with TestClient(app) as test_client:
         yield test_client, session
     app.dependency_overrides.clear()
@@ -137,13 +151,15 @@ def test_health_reports_database_and_postgis(monkeypatch: pytest.MonkeyPatch) ->
         def __enter__(self) -> "Connection":
             return self
 
-        def __exit__(self, *_args: Any) -> None:
-            return None
+        def __exit__(self, *exc_info: Any) -> bool | None:
+            return False if exc_info and exc_info[0] is not None else None
 
-        def execute(self, _statement: Any) -> Result:
+        def execute(self, statement: Any) -> Result:
+            assert statement is not None
             return Result()
 
-        def scalar(self, _statement: Any) -> bool:
+        def scalar(self, statement: Any) -> bool:
+            assert statement is not None
             return True
 
     class Engine:
@@ -234,5 +250,6 @@ def test_village_model_matches_dataset_columns() -> None:
     model_columns = [column.name for column in Village.__table__.columns if column.name != "geom"]
     assert model_columns == csv_columns
     geometry = Village.__table__.columns["geom"].type
+    assert isinstance(geometry, Geometry)
     assert geometry.geometry_type == "POINT"
     assert geometry.srid == 4326
