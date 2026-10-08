@@ -192,8 +192,6 @@ def test_list_villages_and_filters(client: Any) -> None:
     assert response.status_code == 200
     assert response.json()["items"][0]["village_id"] == "MAN-BIS-01-001"
     assert response.json()["total"] == 1
-    assert "lower(villages.district)" in session.statements[0]
-    assert "lower(villages.block)" in session.statements[0]
     assert "geom" not in response.json()["items"][0]
 
 
@@ -230,6 +228,10 @@ def test_map_returns_only_geographic_fields(client: Any) -> None:
             "block": "Bishnupur",
             "latitude": 24.560263,
             "longitude": 93.867276,
+            "priority_score": 9.06,
+            "priority_level": "LOW",
+            "major_service_gap": "Housing",
+            "anomaly_status": "NORMAL",
         }
     ]
 

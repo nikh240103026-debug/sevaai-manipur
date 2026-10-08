@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { logout } from "@/lib/auth";
 import { useAuth } from "@/components/auth-provider";
+import { getActiveDataset } from "@/lib/api/data-upload";
+import type { ActiveDataset } from "@/types/data-upload";
 
 const links = [
   { label: "Dashboard", href: "/dashboard", icon: "¦" },
   { label: "Map", href: "/map", icon: "⌖" },
   { label: "Analytics", href: "/analytics", icon: "◷" },
   { label: "Villages", href: "/villages", icon: "♧" },
-  { label: "Alerts", href: "/alerts", icon: "♧", count: "08" },
+  { label: "Data Upload", href: "/data-upload", icon: "⇧" },
+  { label: "Alerts", href: "/alerts", icon: "♧" },
   { label: "Interventions", href: "/interventions", icon: "◇" },
 ];
 
@@ -51,8 +54,25 @@ export function AppShell({
   const router = useRouter();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeDataset, setActiveDataset] = useState<ActiveDataset | null>(null);
+  const [datasetUnavailable, setDatasetUnavailable] = useState(false);
 
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+    let current = true;
+    getActiveDataset()
+      .then((dataset) => {
+        if (current) setActiveDataset(dataset);
+      })
+      .catch(() => {
+        if (current) setDatasetUnavailable(true);
+      });
+    return () => {
+      current = false;
+    };
+  }, [user]);
 
   function handleLogout() {
     logout();
@@ -127,11 +147,6 @@ export function AppShell({
 
                 <span>{link.label}</span>
 
-                {link.count && (
-                  <span className="nav-count">
-                    {link.count}
-                  </span>
-                )}
               </Link>
             );
           })}
@@ -146,7 +161,13 @@ export function AppShell({
             <strong>Built for better decisions</strong>
 
             <p>
-              Demo insights are synthetic and for exploration only.
+              {activeDataset?.mode === "GOVERNMENT_UPLOAD"
+                ? `Insights reflect validated records${activeDataset.filename ? ` from ${activeDataset.filename}` : ""}.`
+                : activeDataset
+                  ? "Demo insights are synthetic and for exploration only."
+                  : datasetUnavailable
+                    ? "The active dataset status could not be loaded."
+                    : "Checking the active dataset."}
             </p>
 
             <button
@@ -209,9 +230,19 @@ export function AppShell({
               <strong>Mar 2025</strong>
             </span>
 
-            <span className="demo-topbar-badge">
-              DEMO DATA
-            </span>
+            {activeDataset && (
+              <span
+                className="demo-topbar-badge"
+                title={activeDataset.filename ?? undefined}
+              >
+                {activeDataset.mode === "GOVERNMENT_UPLOAD"
+                  ? `GOVERNMENT DATA${activeDataset.filename ? ` · ${activeDataset.filename}` : ""}`
+                  : "DEMO DATA"}
+              </span>
+            )}
+            {datasetUnavailable && (
+              <span className="demo-topbar-badge">DATASET STATUS UNAVAILABLE</span>
+            )}
           </div>
         </header>
 

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 class AnomalyStatus(StrEnum):
     NORMAL = "NORMAL"
     UNUSUAL = "UNUSUAL"
+    UNAVAILABLE = "UNAVAILABLE"
 
 
 class AnomalyReasonCode(StrEnum):
@@ -24,7 +25,8 @@ class VillageAnomaly(BaseModel):
     village: str
     district: str
     block: str
-    anomaly_score: float = Field(ge=0, le=1)
+    anomaly_score: float | None = Field(default=None, ge=0, le=1)
     anomaly_status: AnomalyStatus
     reason_codes: list[AnomalyReasonCode]
     explanation: str
+    available: bool = True

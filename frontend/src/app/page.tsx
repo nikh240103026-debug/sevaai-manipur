@@ -2,74 +2,38 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useAuth } from "@/components/auth-provider";
+import { ApiError, apiRequest } from "@/lib/client";
+import { getActiveDataset } from "@/lib/api/data-upload";
+import type { ActiveDataset } from "@/types/data-upload";
+import type {
+  DashboardPriorityVillage,
+  DashboardSummary,
+  PriorityLevel,
+} from "@/types/dashboard";
 
 type IconName =
   | "activity"
-  | "arrow-down"
-  | "arrow-up"
-  | "bell"
   | "chevron-down"
   | "download"
-  | "filter"
   | "grid"
   | "layers"
   | "map"
   | "menu"
   | "pin"
-  | "search"
   | "shield"
   | "users"
-  | "water"
   | "x";
 
-type Village = {
-  id: string;
-  name: string;
-  district: string;
-  block: string;
-  coverage: number;
-  pending: number;
-  priority: "High" | "Medium";
-};
-
 const iconPaths: Record<IconName, ReactNode> = {
-  activity: (
-    <>
-      <path d="M3 12h4l3-8 4 16 3-8h4" />
-    </>
-  ),
-  "arrow-down": (
-    <>
-      <path d="M12 5v14" />
-      <path d="m19 12-7 7-7-7" />
-    </>
-  ),
-  "arrow-up": (
-    <>
-      <path d="M12 19V5" />
-      <path d="m5 12 7-7 7 7" />
-    </>
-  ),
-  bell: (
-    <>
-      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-      <path d="M10 21h4" />
-    </>
-  ),
+  activity: <path d="M3 12h4l3-8 4 16 3-8h4" />,
   "chevron-down": <path d="m7 10 5 5 5-5" />,
   download: (
     <>
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <path d="m7 10 5 5 5-5" />
       <path d="M12 15V3" />
-    </>
-  ),
-  filter: (
-    <>
-      <path d="M4 7h16" />
-      <path d="M7 12h10" />
-      <path d="M10 17h4" />
     </>
   ),
   grid: (
@@ -107,12 +71,6 @@ const iconPaths: Record<IconName, ReactNode> = {
       <circle cx="12" cy="10" r="2.5" />
     </>
   ),
-  search: (
-    <>
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-4-4" />
-    </>
-  ),
   shield: (
     <>
       <path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z" />
@@ -125,12 +83,6 @@ const iconPaths: Record<IconName, ReactNode> = {
       <circle cx="10" cy="7" r="4" />
       <path d="M20 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </>
-  ),
-  water: (
-    <>
-      <path d="M12 3s7 8 7 12a7 7 0 1 1-14 0c0-4 7-12 7-12Z" />
-      <path d="M9 16a3 3 0 0 0 3 3" />
     </>
   ),
   x: (
@@ -165,88 +117,76 @@ function Icon({
   );
 }
 
-const villages: Village[] = [
-  {
-    id: "MAN-BIS-01-002",
-    name: "Bishnupur Demo Village 002",
-    district: "Bishnupur",
-    block: "Bishnupur",
-    coverage: 67,
-    pending: 5,
-    priority: "High",
-  },
-  {
-    id: "MAN-BIS-01-004",
-    name: "Bishnupur Demo Village 004",
-    district: "Bishnupur",
-    block: "Bishnupur",
-    coverage: 78,
-    pending: 36,
-    priority: "High",
-  },
-  {
-    id: "MAN-CCP-02-018",
-    name: "Churachandpur Demo Village 018",
-    district: "Churachandpur",
-    block: "Churachandpur",
-    coverage: 61,
-    pending: 29,
-    priority: "High",
-  },
-  {
-    id: "MAN-IE-03-007",
-    name: "Imphal East Demo Village 007",
-    district: "Imphal East",
-    block: "Keirao",
-    coverage: 73,
-    pending: 14,
-    priority: "Medium",
-  },
-  {
-    id: "MAN-SNP-04-021",
-    name: "Senapati Demo Village 021",
-    district: "Senapati",
-    block: "Saitu",
-    coverage: 69,
-    pending: 22,
-    priority: "Medium",
-  },
-];
-
-const coverage = [
-  { label: "Housing", value: 76, color: "var(--chart-indigo)" },
-  { label: "Healthcare", value: 68, color: "var(--chart-blue)" },
-  { label: "Drinking water", value: 59, color: "var(--chart-teal)" },
-  { label: "Welfare", value: 82, color: "var(--chart-violet)" },
-];
-
-const priorityDistricts = [
-  { name: "Churachandpur", villages: 42, gap: 38, tone: "rose" },
-  { name: "Senapati", villages: 36, gap: 32, tone: "amber" },
-  { name: "Bishnupur", villages: 31, gap: 28, tone: "blue" },
-  { name: "Imphal East", villages: 24, gap: 21, tone: "teal" },
-];
-
 const navigation = [
   { label: "Dashboard", icon: "grid" as const, href: "/dashboard" },
   { label: "Map", icon: "map" as const, href: "/map" },
   { label: "Analytics", icon: "activity" as const, href: "/analytics" },
   { label: "Villages", icon: "users" as const, href: "/villages" },
+  { label: "Data Upload", icon: "layers" as const, href: "/data-upload" },
 ];
 
 const management = [
-  { label: "Alerts", icon: "bell" as const, href: "/alerts" },
+  { label: "Alerts", icon: "activity" as const, href: "/alerts" },
   { label: "Interventions", icon: "layers" as const, href: "/interventions" },
 ];
+
+const serviceDisplay = [
+  { key: "housing", label: "Housing", color: "var(--chart-indigo)" },
+  { key: "health", label: "Health", color: "var(--chart-blue)" },
+  { key: "water", label: "Water", color: "var(--chart-teal)" },
+  { key: "welfare", label: "Welfare", color: "var(--chart-violet)" },
+] as const;
+
+const priorityDisplay: {
+  key: keyof DashboardSummary["priority"];
+  label: string;
+  tone: string;
+}[] = [
+  { key: "high", label: "High", tone: "rose" },
+  { key: "medium", label: "Medium", tone: "amber" },
+  { key: "low", label: "Low", tone: "teal" },
+];
+
+const numberFormatter = new Intl.NumberFormat("en-US");
+const percentFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+});
+
+function formatRole(role: string): string {
+  return role
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getInitials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((part) => part[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
 
 function Sidebar({
   open,
   onClose,
+  fullName,
+  role,
+  activeDataset,
+  datasetLoadError,
 }: {
   open: boolean;
   onClose: () => void;
+  fullName: string;
+  role: string;
+  activeDataset: ActiveDataset | null;
+  datasetLoadError: boolean;
 }) {
   const pathname = usePathname();
+  const navGroups = [navigation, management];
+
   return (
     <>
       {open && (
@@ -254,6 +194,7 @@ function Sidebar({
           className="sidebar-scrim"
           aria-label="Close navigation"
           onClick={onClose}
+          type="button"
         />
       )}
       <aside className={`sidebar${open ? " sidebar-open" : ""}`}>
@@ -262,7 +203,9 @@ function Sidebar({
             <Icon name="activity" size={21} />
           </span>
           <span className="brand-copy">
-            <strong>seva<span>ai</span></strong>
+            <strong>
+              seva<span>ai</span>
+            </strong>
             <small>MANIPUR · INTELLIGENCE</small>
           </span>
         </Link>
@@ -275,37 +218,29 @@ function Sidebar({
           <Icon name="x" />
         </button>
 
-        <div className="workspace-label">WORKSPACE</div>
-        <nav className="side-nav" aria-label="Main navigation">
-          {navigation.map((item, index) => (
-            <Link
-              className={`nav-link${pathname === item.href || (index === 0 && pathname === "/") ? " nav-link-active" : ""}`}
-              href={item.href}
-              key={item.label}
-              onClick={onClose}
+        {navGroups.map((group, index) => (
+          <div key={index}>
+            <div className={`workspace-label${index ? " management-label" : ""}`}>
+              {index ? "MANAGEMENT" : "WORKSPACE"}
+            </div>
+            <nav
+              className="side-nav"
+              aria-label={index ? "Management navigation" : "Main navigation"}
             >
-              <Icon name={item.icon} />
-              <span>{item.label}</span>
-              {item.label === "Alerts" && <span className="nav-count">08</span>}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="workspace-label management-label">MANAGEMENT</div>
-        <nav className="side-nav" aria-label="Management navigation">
-          {management.map((item) => (
-            <Link
-              className={`nav-link${pathname === item.href ? " nav-link-active" : ""}`}
-              href={item.href}
-              key={item.label}
-              onClick={onClose}
-            >
-              <Icon name={item.icon} />
-              <span>{item.label}</span>
-              {item.label === "Alerts" && <span className="nav-count">08</span>}
-            </Link>
-          ))}
-        </nav>
+              {group.map((item) => (
+                <Link
+                  className={`nav-link${pathname === item.href || (item.href === "/dashboard" && pathname === "/") ? " nav-link-active" : ""}`}
+                  href={item.href}
+                  key={item.label}
+                  onClick={onClose}
+                >
+                  <Icon name={item.icon} />
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </nav>
+          </div>
+        ))}
 
         <div className="sidebar-bottom">
           <div className="sidebar-help">
@@ -313,23 +248,25 @@ function Sidebar({
               <Icon name="shield" size={18} />
             </div>
             <strong>Built for better decisions</strong>
-            <p>Demo insights are synthetic and for exploration only.</p>
-            <a href="#data-notice">About this data <span aria-hidden="true">↗</span></a>
+            <p>
+              {activeDataset?.mode === "GOVERNMENT_UPLOAD"
+                ? `Insights use validated government-upload records${activeDataset.filename ? ` from ${activeDataset.filename}` : ""}.`
+                : activeDataset
+                  ? "Insights use synthetic demo records for decision support."
+                  : datasetLoadError
+                    ? "The active dataset status could not be loaded."
+                    : "Checking the active dataset."}
+            </p>
+            <a href="#data-notice">
+              About this data <span aria-hidden="true">↗</span>
+            </a>
           </div>
           <div className="profile">
-            <div className="avatar">AD</div>
+            <div className="avatar">{getInitials(fullName)}</div>
             <div className="profile-copy">
-              <strong>Admin Demo</strong>
-              <span>State administrator</span>
+              <strong>{fullName}</strong>
+              <span>{formatRole(role)}</span>
             </div>
-            <button
-              className="icon-button profile-menu"
-              aria-label="Profile options"
-              title="Profile options"
-              type="button"
-            >
-              <Icon name="chevron-down" size={16} />
-            </button>
           </div>
         </div>
       </aside>
@@ -365,14 +302,12 @@ function MetricCard({
   label,
   value,
   note,
-  change,
   tone,
 }: {
   icon: IconName;
   label: string;
   value: string;
   note: string;
-  change: string;
   tone: "indigo" | "teal" | "amber" | "rose";
 }) {
   return (
@@ -381,14 +316,6 @@ function MetricCard({
         <div className={`metric-icon metric-icon-${tone}`}>
           <Icon name={icon} size={19} />
         </div>
-        <span className={`metric-change metric-change-${tone}`}>
-          {tone === "rose" ? (
-            <Icon name="arrow-up" size={13} />
-          ) : (
-            <Icon name="arrow-up" size={13} />
-          )}
-          {change}
-        </span>
       </div>
       <div className="metric-value">{value}</div>
       <div className="metric-label">{label}</div>
@@ -397,140 +324,153 @@ function MetricCard({
   );
 }
 
-function MapIllustration() {
-  return (
-    <div className="map-illustration">
-      <div className="map-grid" />
-      <svg
-        className="manipur-map"
-        viewBox="0 0 470 330"
-        role="img"
-        aria-label="Schematic illustration of Manipur with sample village markers"
-      >
-        <defs>
-          <linearGradient id="landFill" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#e5edff" />
-            <stop offset="100%" stopColor="#dce8f7" />
-          </linearGradient>
-          <pattern
-            id="landPattern"
-            width="8"
-            height="8"
-            patternTransform="rotate(45)"
-            patternUnits="userSpaceOnUse"
-          >
-            <line
-              x1="0"
-              x2="0"
-              y1="0"
-              y2="8"
-              stroke="#ffffff"
-              strokeOpacity=".45"
-              strokeWidth="2"
-            />
-          </pattern>
-        </defs>
-        <path
-          className="map-land-shadow"
-          d="m227 18 34 19 36-4 23 23 35 8 5 32 29 15-8 34 23 30-9 31 21 22-17 32-36 8-19 29-39 7-25-22-35 15-29-18-36 2-22-27-35-8-11-34-27-18 9-34-16-27 16-26-9-34 31-7 18-31 39-4 19-26 30 7Z"
-          transform="translate(0 7)"
-        />
-        <path
-          className="map-land"
-          d="m227 18 34 19 36-4 23 23 35 8 5 32 29 15-8 34 23 30-9 31 21 22-17 32-36 8-19 29-39 7-25-22-35 15-29-18-36 2-22-27-35-8-11-34-27-18 9-34-16-27 16-26-9-34 31-7 18-31 39-4 19-26 30 7Z"
-        />
-        <path
-          className="map-land-pattern"
-          d="m227 18 34 19 36-4 23 23 35 8 5 32 29 15-8 34 23 30-9 31 21 22-17 32-36 8-19 29-39 7-25-22-35 15-29-18-36 2-22-27-35-8-11-34-27-18 9-34-16-27 16-26-9-34 31-7 18-31 39-4 19-26 30 7Z"
-        />
-        <path className="map-boundary" d="m217 93 61-13 28 25-12 40 42 28-21 38 8 49" />
-        <path className="map-boundary" d="m155 163 52 9 22 43 57-13" />
-        <path className="map-boundary" d="m203 44 15 49-11 79-9 56" />
-        <path className="map-boundary" d="m306 105 50-9m-73 54 67 23m-127 39 29 54" />
-        <text className="map-district" x="245" y="127">Kangpokpi</text>
-        <text className="map-district" x="273" y="188">Imphal East</text>
-        <text className="map-district" x="214" y="205">Imphal West</text>
-        <text className="map-district" x="280" y="235">Bishnupur</text>
-        <text className="map-district" x="143" y="161">Tamenglong</text>
-        <text className="map-district" x="182" y="269">Churachandpur</text>
-        <g className="map-marker marker-high" transform="translate(301 225)">
-          <circle className="marker-pulse" r="15" />
-          <circle className="marker-core" r="6" />
-        </g>
-        <g className="map-marker marker-medium" transform="translate(284 185)">
-          <circle className="marker-pulse" r="12" />
-          <circle className="marker-core" r="5" />
-        </g>
-        <g className="map-marker marker-high" transform="translate(222 249)">
-          <circle className="marker-pulse" r="14" />
-          <circle className="marker-core" r="5.5" />
-        </g>
-        <g className="map-marker marker-medium" transform="translate(328 123)">
-          <circle className="marker-pulse" r="12" />
-          <circle className="marker-core" r="5" />
-        </g>
-        <g className="map-marker marker-medium" transform="translate(182 125)">
-          <circle className="marker-pulse" r="11" />
-          <circle className="marker-core" r="4.5" />
-        </g>
-        <g className="map-marker marker-high" transform="translate(254 174)">
-          <circle className="marker-pulse" r="14" />
-          <circle className="marker-core" r="5.5" />
-        </g>
-      </svg>
-      <div className="map-caption">
-        <span><i className="legend-dot legend-high" /> High priority</span>
-        <span><i className="legend-dot legend-medium" /> Medium priority</span>
-        <span className="map-caption-note">Schematic · not for navigation</span>
-      </div>
-    </div>
-  );
+function formatCount(value: number | null): string {
+  return value === null ? "Data unavailable" : numberFormatter.format(value);
 }
 
-function exportVillageSnapshot(rows: Village[]) {
-  const header = ["Village ID", "Village", "District", "Block", "Coverage %", "Pending", "Priority"];
+function formatPercent(value: number | null): string {
+  return value === null ? "Data unavailable" : `${percentFormatter.format(value)}%`;
+}
+
+function serviceGaps(village: DashboardPriorityVillage): {
+  label: string;
+  value: number;
+}[] {
+  return [
+    { label: "Housing", value: village.housing_gap },
+    { label: "Health", value: village.health_gap },
+    { label: "Water", value: village.water_gap },
+    { label: "Welfare", value: village.welfare_gap },
+  ]
+    .filter((gap) => gap.value > 0)
+    .sort((a, b) => b.value - a.value);
+}
+
+function exportPriorityVillages(rows: DashboardPriorityVillage[]): void {
+  const header = [
+    "Village ID",
+    "Village",
+    "District",
+    "Block",
+    "Priority Score",
+    "Priority Level",
+    "Housing Gap",
+    "Health Gap",
+    "Water Gap",
+    "Welfare Gap",
+  ];
   const lines = rows.map((row) => [
-    row.id,
-    row.name,
+    row.village_id,
+    row.village,
     row.district,
     row.block,
-    row.coverage,
-    row.pending,
-    row.priority,
+    row.priority_score,
+    row.priority_level,
+    row.housing_gap,
+    row.health_gap,
+    row.water_gap,
+    row.welfare_gap,
   ]);
   const csv = [header, ...lines]
-    .map((line) => line.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+    .map((line) =>
+      line
+        .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+        .join(","),
+    )
     .join("\n");
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const url = URL.createObjectURL(
+    new Blob([csv], { type: "text/csv;charset=utf-8" }),
+  );
   const link = document.createElement("a");
   link.href = url;
-  link.download = "sevaai-demo-villages.csv";
+  link.download = "sevaai-priority-villages.csv";
   link.click();
   URL.revokeObjectURL(url);
 }
 
-export default function Home() {
-  const [search, setSearch] = useState("");
-  const [district, setDistrict] = useState("All districts");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+function getLoadErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.status === 401) {
+    return "Your session may have expired. Please sign in again.";
+  }
+  return "We couldn’t load the dashboard right now. Check your connection and try again.";
+}
 
-  const filteredVillages = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return villages.filter((village) => {
-      const matchesSearch =
-        !query ||
-        `${village.id} ${village.name} ${village.district} ${village.block}`
-          .toLowerCase()
-          .includes(query);
-      const matchesDistrict =
-        district === "All districts" || village.district === district;
-      return matchesSearch && matchesDistrict;
-    });
-  }, [district, search]);
+export default function Home() {
+  const { user, loading: authLoading } = useAuth();
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeDataset, setActiveDataset] = useState<ActiveDataset | null>(null);
+  const [datasetLoadError, setDatasetLoadError] = useState(false);
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    let isCurrentRequest = true;
+    getActiveDataset()
+      .then((result) => {
+        if (isCurrentRequest) setActiveDataset(result);
+      })
+      .catch(() => {
+        if (isCurrentRequest) setDatasetLoadError(true);
+      });
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+    if (!user) {
+      return;
+    }
+
+    let isCurrentRequest = true;
+
+    apiRequest<DashboardSummary>("/api/v1/dashboard/summary")
+      .then((result) => {
+        if (isCurrentRequest) {
+          setSummary(result);
+        }
+      })
+      .catch((requestError: unknown) => {
+        if (isCurrentRequest) {
+          setError(getLoadErrorMessage(requestError));
+        }
+      })
+      .finally(() => {
+        if (isCurrentRequest) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [authLoading, reloadKey, user]);
+
+  const isLoading = authLoading || (Boolean(user) && loading);
+  const coverageValues = summary
+    ? Object.values(summary.service_coverage)
+    : [];
+  const averageCoverage = coverageValues.length === 4 &&
+      coverageValues.every((value): value is number => value !== null)
+    ? coverageValues.reduce((total, value) => total + value, 0) / 4
+    : null;
 
   return (
     <div className="dashboard-shell" id="dashboard">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        fullName={user?.full_name ?? ""}
+        role={user?.role ?? ""}
+        activeDataset={activeDataset}
+        datasetLoadError={datasetLoadError}
+      />
 
       <main className="main-panel">
         <header className="topbar">
@@ -550,25 +490,18 @@ export default function Home() {
             </div>
           </div>
           <div className="topbar-actions">
-            <span className="topbar-date">Reporting period <strong>Mar 2025</strong></span>
-            <a
-              className="api-link"
-              href="http://127.0.0.1:8000/docs"
-              target="_blank"
-              rel="noreferrer"
-              title="Open the FastAPI documentation"
-            >
-              API docs <span aria-hidden="true">↗</span>
-            </a>
-            <button
-              className="icon-button notification-button"
-              aria-label="Notifications (demo)"
-              title="Notifications are not connected yet"
-              type="button"
-            >
-              <Icon name="bell" />
-              <span className="notification-dot" />
-            </button>
+            <span className="topbar-date">
+              Data scope <strong>{user ? formatRole(user.role) : "Loading"}</strong>
+            </span>
+            <span className="demo-topbar-badge" title={activeDataset?.filename ?? undefined}>
+              {activeDataset?.mode === "GOVERNMENT_UPLOAD"
+                ? `GOVERNMENT DATA${activeDataset.filename ? ` · ${activeDataset.filename}` : ""}`
+                : activeDataset
+                  ? "DEMO DATA"
+                  : datasetLoadError
+                    ? "DATASET STATUS UNAVAILABLE"
+                    : "LOADING DATASET"}
+            </span>
           </div>
         </header>
 
@@ -577,294 +510,353 @@ export default function Home() {
             <div>
               <div className="welcome-overline">
                 <span className="live-dot" />
-                MANIPUR · STATE OVERVIEW
+                MANIPUR · SERVICE OVERVIEW
               </div>
-              <h1>Good morning, Admin <span aria-hidden="true">✳</span></h1>
-              <p>Here&apos;s what&apos;s happening across your service landscape.</p>
+              <h1>
+                Welcome{user?.full_name ? `, ${user.full_name}` : ""}
+                <span aria-hidden="true"> ✳</span>
+              </h1>
+              <p>
+                Current service coverage, pending cases, and priority signals in
+                your permitted scope.
+              </p>
             </div>
-            <button
-              className="button button-secondary export-button"
-              onClick={() => exportVillageSnapshot(filteredVillages)}
-              type="button"
-            >
-              <Icon name="download" size={16} />
-              Export snapshot
-            </button>
+            {summary && summary.top_priority_villages.length > 0 && (
+              <button
+                className="button button-secondary export-button"
+                onClick={() =>
+                  exportPriorityVillages(summary.top_priority_villages)
+                }
+                type="button"
+              >
+                <Icon name="download" size={16} />
+                Export priority villages
+              </button>
+            )}
           </section>
 
           <div className="demo-notice" id="data-notice">
-            <span className="notice-icon"><Icon name="shield" size={16} /></span>
-            <span><strong>Demo environment</strong> · All figures and map markers are synthetic sample data, not official statistics.</span>
-            <span className="notice-period">Reporting date: 31 Mar 2025</span>
+            <span className="notice-icon">
+              <Icon name="shield" size={16} />
+            </span>
+            <span>
+              <strong>
+                {activeDataset?.mode === "GOVERNMENT_UPLOAD"
+                  ? `Government dataset${activeDataset.filename ? ` · ${activeDataset.filename}` : ""}`
+                  : activeDataset
+                    ? "Synthetic/demo dataset"
+                    : "Dataset selection"}
+              </strong>
+              {" · "}
+              {activeDataset?.mode === "GOVERNMENT_UPLOAD"
+                ? "Dashboard metrics reflect the active uploaded records."
+                : "When no eligible upload is available, the synthetic demo dataset is used."}
+            </span>
           </div>
+          {summary && !summary.analytics_available && summary.total_villages > 0 && (
+            <div className="dashboard-state dashboard-state-empty" role="status">
+              Priority scoring and some service metrics are unavailable because the active records do not contain all required fields.
+            </div>
+          )}
 
-          <section className="metrics-grid" aria-label="Dashboard summary metrics">
-            <MetricCard
-              icon="users"
-              label="Villages monitored"
-              value="2,000"
-              note="Across 16 districts"
-              change="All districts"
-              tone="indigo"
-            />
-            <MetricCard
-              icon="activity"
-              label="Average service coverage"
-              value="71.3%"
-              note="Across 4 service areas"
-              change="+2.4%"
-              tone="teal"
-            />
-            <MetricCard
-              icon="layers"
-              label="Pending cases"
-              value="1,284"
-              note="Across monitored villages"
-              change="−8.2%"
-              tone="amber"
-            />
-            <MetricCard
-              icon="pin"
-              label="Priority villages"
-              value="206"
-              note="Need closer review"
-              change="10.3%"
-              tone="rose"
-            />
-          </section>
-
-          <section className="insight-grid" aria-label="Coverage and priority analysis">
-            <article className="panel coverage-panel" id="analytics">
-              <SectionHeading
-                eyebrow="SERVICE DELIVERY"
-                title="Service coverage"
-                detail="Average household coverage by service area"
-                action={<button className="panel-more" type="button" aria-label="Coverage options">•••</button>}
-              />
-              <div className="coverage-summary">
-                <div>
-                  <strong>71.3<span>%</span></strong>
-                  <span className="summary-caption">overall average</span>
-                </div>
-                <div className="coverage-summary-note">
-                  <span className="trend-up"><Icon name="arrow-up" size={14} /> 2.4%</span>
-                  <span>vs. previous period</span>
-                </div>
-              </div>
-              <div className="coverage-bars">
-                {coverage.map((item) => (
-                  <div className="coverage-row" key={item.label}>
-                    <div className="coverage-label">
-                      <span>{item.label}</span>
-                      <strong>{item.value}%</strong>
-                    </div>
-                    <div
-                      className="progress-track"
-                      role="progressbar"
-                      aria-label={`${item.label} coverage`}
-                      aria-valuenow={item.value}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                    >
-                      <span style={{ width: `${item.value}%`, backgroundColor: item.color }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="coverage-footer">
-                <span><i className="coverage-legend" /> Current coverage</span>
-                <span className="small-muted">Coverage varies by village</span>
-              </div>
-            </article>
-
-            <article className="panel priority-panel" id="priority">
-              <SectionHeading
-                eyebrow="DECISION SUPPORT"
-                title="Priority & gap analysis"
-                detail="Districts with the largest combined service gaps"
-                action={<span className="priority-period">This period <Icon name="chevron-down" size={14} /></span>}
-              />
-              <div className="priority-callout">
-                <div className="callout-icon"><Icon name="activity" size={17} /></div>
-                <div>
-                  <strong>206 villages flagged for review</strong>
-                  <span>Based on multiple service gaps in this demo snapshot</span>
-                </div>
-                <span className="callout-pill">10.3%</span>
-              </div>
-              <div className="district-list">
-                {priorityDistricts.map((item, index) => (
-                  <div className="district-row" key={item.name}>
-                    <span className="district-rank">{String(index + 1).padStart(2, "0")}</span>
-                    <div className="district-main">
-                      <div className="district-label">
-                        <strong>{item.name}</strong>
-                        <span>{item.villages} priority villages</span>
-                      </div>
-                      <div className="priority-track">
-                        <span
-                          className={`priority-fill priority-fill-${item.tone}`}
-                          style={{ width: `${item.gap * 2}%` }}
-                        />
-                      </div>
-                    </div>
-                    <span className={`gap-value gap-${item.tone}`}>{item.gap}%</span>
-                  </div>
-                ))}
-              </div>
-              <a className="text-link" href="#villages">Explore priority villages <span aria-hidden="true">→</span></a>
-            </article>
-          </section>
-
-          <section className="panel map-panel" id="map">
-            <div className="map-panel-header">
-              <SectionHeading
-                eyebrow="GEOGRAPHIC INTELLIGENCE"
-                title="Village overview"
-                detail="Explore sample service coverage and priority signals across Manipur"
-              />
-              <label className="select-wrap">
-                <Icon name="filter" size={16} />
-                <select
-                  aria-label="Filter villages by district"
-                  value={district}
-                  onChange={(event) => setDistrict(event.target.value)}
+          {isLoading ? (
+            <div className="dashboard-state" role="status" aria-live="polite">
+              <span className="loading-indicator" />
+              Loading dashboard summary…
+            </div>
+          ) : error ? (
+            <div className="dashboard-state dashboard-state-error" role="alert">
+              <p>{error}</p>
+              <button
+                className="button button-secondary"
+                onClick={() => {
+                  setError(null);
+                  setLoading(true);
+                  setReloadKey((key) => key + 1);
+                }}
+                type="button"
+              >
+                Try again
+              </button>
+            </div>
+          ) : !user ? (
+            <div className="dashboard-state" role="status">
+              Redirecting to sign in…
+            </div>
+          ) : summary ? (
+            <>
+              {summary.total_villages === 0 && (
+                <div
+                  className="dashboard-state dashboard-state-empty"
+                  role="status"
                 >
-                  <option>All districts</option>
-                  {["Bishnupur", "Churachandpur", "Imphal East", "Senapati"].map((name) => (
-                    <option key={name}>{name}</option>
-                  ))}
-                </select>
-                <Icon name="chevron-down" size={14} />
-              </label>
-            </div>
-            <div className="map-layout">
-              <MapIllustration />
-              <div className="map-side">
-                <div className="map-stat-card">
-                  <div className="map-stat-heading"><span>AT A GLANCE</span><Icon name="pin" size={16} /></div>
-                  <div className="map-stat"><strong>16</strong><span>districts included</span></div>
-                  <div className="map-stat-divider" />
-                  <div className="map-stat"><strong>2,000</strong><span>sample villages</span></div>
+                  No village records are available in your permitted scope.
                 </div>
-                <div className="map-alert-card">
-                  <div className="alert-accent" />
-                  <div>
-                    <strong>Areas to explore</strong>
-                    <p>Churachandpur and Senapati show higher sample service gaps.</p>
-                    <a href="#priority">View priority analysis <span aria-hidden="true">→</span></a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+              )}
 
-          <section className="panel village-panel" id="villages">
-            <div className="village-panel-header">
-              <SectionHeading
-                eyebrow="FIELD INTELLIGENCE"
-                title="Priority villages"
-                detail={`${filteredVillages.length} sample ${filteredVillages.length === 1 ? "village" : "villages"} shown · sorted by review priority`}
-              />
-              <div className="table-tools">
-                <label className="search-box">
-                  <Icon name="search" size={17} />
-                  <input
-                    aria-label="Search sample villages"
-                    placeholder="Search villages..."
-                    type="search"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
+              <section
+                className="metrics-grid"
+                aria-label="Dashboard summary metrics"
+              >
+                <MetricCard
+                  icon="users"
+                  label="Villages monitored"
+                  value={formatCount(summary.total_villages)}
+                  note="In your permitted scope"
+                  tone="indigo"
+                />
+                <MetricCard
+                  icon="activity"
+                  label="Total population"
+                  value={formatCount(summary.total_population)}
+                  note="Across available village records"
+                  tone="teal"
+                />
+                <MetricCard
+                  icon="layers"
+                  label="Pending cases"
+                  value={formatCount(summary.total_pending_cases)}
+                  note="Across available village records"
+                  tone="amber"
+                />
+                <MetricCard
+                  icon="pin"
+                  label="Unusual villages"
+                  value={formatCount(summary.unusual_villages)}
+                  note="Statistical decision-support signals"
+                  tone="rose"
+                />
+              </section>
+
+              <section
+                className="insight-grid"
+                aria-label="Coverage and priority analysis"
+              >
+                <article className="panel coverage-panel" id="analytics">
+                  <SectionHeading
+                    eyebrow="SERVICE DELIVERY"
+                    title="Service coverage"
+                    detail="Average village coverage by service area"
                   />
-                  {search && (
+                  <div className="coverage-summary">
+                    <div>
+                      <strong>
+                        {formatPercent(averageCoverage)}
+                      </strong>
+                      <span className="summary-caption">overall average</span>
+                    </div>
+                    <div className="coverage-summary-note">
+                      <span>Across four service areas</span>
+                    </div>
+                  </div>
+                  <div className="coverage-bars">
+                    {serviceDisplay.map((service) => {
+                      const value = summary.service_coverage[service.key];
+                      return (
+                        <div className="coverage-row" key={service.key}>
+                          <div className="coverage-label">
+                            <span>{service.label}</span>
+                            <strong>{formatPercent(value)}</strong>
+                          </div>
+                          <div
+                            className="progress-track"
+                            role="progressbar"
+                            aria-label={`${service.label} coverage`}
+                            aria-valuenow={value ?? undefined}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                          >
+                            <span
+                              style={{
+                                width: `${value ?? 0}%`,
+                                backgroundColor: service.color,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="coverage-footer">
+                    <span>
+                      <i className="coverage-legend" /> Current coverage
+                    </span>
+                    <span className="small-muted">
+                      Aggregated from available village records
+                    </span>
+                  </div>
+                </article>
+
+                <article className="panel priority-panel" id="priority">
+                  <SectionHeading
+                    eyebrow="DECISION SUPPORT"
+                    title="Priority distribution"
+                    detail="Village counts by backend analytics priority level"
+                  />
+                  <div className="priority-count-list">
+                    {priorityDisplay.map((item) => (
+                      <div className="priority-count-row" key={item.key}>
+                        <span
+                          className={`priority-badge priority-badge-${item.label.toLowerCase()}`}
+                        >
+                          <i />
+                          {item.label}
+                        </span>
+                        <strong>{formatCount(summary.priority[item.key])}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="priority-callout">
+                    <div className="callout-icon">
+                      <Icon name="activity" size={17} />
+                    </div>
+                    <div>
+                      <strong>
+                        {formatCount(summary.unusual_villages)} unusual
+                        {summary.unusual_villages === 1 ? " village" : " villages"}
+                      </strong>
+                      <span>
+                        Isolation Forest signals for decision support only;
+                        unusual does not mean wrongdoing.
+                      </span>
+                    </div>
+                  </div>
+                </article>
+              </section>
+
+              <section className="panel village-panel" id="villages">
+                <div className="village-panel-header">
+                  <SectionHeading
+                    eyebrow="FIELD INTELLIGENCE"
+                    title="Top priority villages"
+                    detail={`${formatCount(summary.top_priority_villages.length)} highest priority records returned by the dashboard API`}
+                  />
+                  {summary.top_priority_villages.length > 0 && (
                     <button
-                      aria-label="Clear search"
-                      className="clear-search"
-                      onClick={() => setSearch("")}
+                      className="button button-secondary table-export"
+                      onClick={() =>
+                        exportPriorityVillages(summary.top_priority_villages)
+                      }
                       type="button"
                     >
-                      <Icon name="x" size={14} />
+                      <Icon name="download" size={15} />
+                      Export
                     </button>
                   )}
-                </label>
-                <button
-                  className="button button-secondary table-export"
-                  onClick={() => exportVillageSnapshot(filteredVillages)}
-                  type="button"
-                >
-                  <Icon name="download" size={15} />
-                  Export
-                </button>
-              </div>
-            </div>
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>VILLAGE</th>
-                    <th>DISTRICT / BLOCK</th>
-                    <th>SERVICE COVERAGE</th>
-                    <th>PENDING CASES</th>
-                    <th>PRIORITY</th>
-                    <th><span className="sr-only">Open village</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredVillages.map((village) => (
-                    <tr key={village.id}>
-                      <td>
-                        <div className="village-name">{village.name}</div>
-                        <div className="village-id">{village.id}</div>
-                      </td>
-                      <td>
-                        <div className="district-name">{village.district}</div>
-                        <div className="village-id">{village.block} block</div>
-                      </td>
-                      <td>
-                        <div className="table-coverage">
-                          <div className="table-progress"><span style={{ width: `${village.coverage}%` }} /></div>
-                          <strong>{village.coverage}%</strong>
-                        </div>
-                      </td>
-                      <td><span className="pending-number">{village.pending}</span></td>
-                      <td>
-                        <span className={`priority-badge priority-badge-${village.priority.toLowerCase()}`}>
-                          <i />
-                          {village.priority}
-                        </span>
-                      </td>
-                      <td><Link className="row-link" href={`/villages/${village.id}`} aria-label={`View details for ${village.name}`}>↗</Link></td>
-                    </tr>
-                  ))}
-                  {filteredVillages.length === 0 && (
-                    <tr>
-                      <td className="empty-state" colSpan={6}>No sample villages match your search.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="table-footer">
-              <span>Showing <strong>{filteredVillages.length}</strong> demo records</span>
-              <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">Connect to village API <span aria-hidden="true">↗</span></a>
-            </div>
-          </section>
+                </div>
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>VILLAGE</th>
+                        <th>DISTRICT / BLOCK</th>
+                        <th>PRIORITY SCORE</th>
+                        <th>LEVEL</th>
+                        <th>MAJOR SERVICE GAPS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {summary.top_priority_villages.map((village) => (
+                        <tr key={village.village_id}>
+                          <td>
+                            <div className="village-name">
+                              {village.village}
+                            </div>
+                            <div className="village-id">
+                              {village.village_id}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="district-name">
+                              {village.district}
+                            </div>
+                            <div className="village-id">{village.block}</div>
+                          </td>
+                          <td>
+                            <span className="pending-number">
+                              {percentFormatter.format(village.priority_score)}
+                            </span>
+                          </td>
+                          <td>
+                            <PriorityBadge level={village.priority_level} />
+                          </td>
+                          <td className="service-gap-cell">
+                            {serviceGaps(village).length > 0 ? (
+                              serviceGaps(village).map((gap) => (
+                                <span
+                                  className="service-gap-chip"
+                                  key={gap.label}
+                                >
+                                  {gap.label} {formatPercent(gap.value)}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="small-muted">
+                                No service coverage gaps
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {summary.top_priority_villages.length === 0 && (
+                        <tr>
+                          <td className="empty-state" colSpan={5}>
+                            {summary.total_villages === 0
+                              ? "No villages are available in your permitted scope."
+                              : "No top-priority villages were returned."}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="table-footer">
+                  <span>
+                    Showing{" "}
+                    <strong>
+                      {formatCount(summary.top_priority_villages.length)}
+                    </strong>{" "}
+                    villages
+                  </span>
+                  <Link href="/villages">
+                    Explore villages <span aria-hidden="true">→</span>
+                  </Link>
+                </div>
+              </section>
 
-          <section className="intervention-placeholder" id="interventions">
-            <span className="intervention-icon"><Icon name="layers" size={17} /></span>
-            <div>
-              <strong>Intervention tracking is coming next</strong>
-              <p>This dashboard preview is ready to connect when the intervention API is available.</p>
-            </div>
-            <span className="preview-pill">PREVIEW</span>
-          </section>
+              <section className="intervention-placeholder" id="interventions">
+                <span className="intervention-icon">
+                  <Icon name="layers" size={17} />
+                </span>
+                <div>
+                  <strong>Intervention tracking is coming next</strong>
+                  <p>
+                    Intervention management will be connected when its API is
+                    available.
+                  </p>
+                </div>
+                <span className="preview-pill">PREVIEW</span>
+              </section>
+            </>
+          ) : null}
 
           <footer className="dashboard-footer">
-            <span>SevaAI Manipur <span aria-hidden="true">·</span> Decision support for public services</span>
-            <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">FastAPI documentation <span aria-hidden="true">↗</span></a>
+            <span>
+              SevaAI Manipur <span aria-hidden="true">·</span> Decision support
+              for public services
+            </span>
           </footer>
         </div>
       </main>
     </div>
+  );
+}
+
+function PriorityBadge({ level }: { level: PriorityLevel }) {
+  return (
+    <span className={`priority-badge priority-badge-${level.toLowerCase()}`}>
+      <i />
+      {level}
+    </span>
   );
 }

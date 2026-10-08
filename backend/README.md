@@ -41,6 +41,18 @@ Set-Location backend
 
 For a district officer, also pass `--district "District Name"`; for a block officer, pass both `--district "District Name"` and `--block "Block Name"`. The script prompts for a matching password of at least 12 characters and stores only its Argon2 hash. No demo account or default password is created.
 
+## Government data uploads
+
+Authenticated officials can submit CSV, XLSX, or text-based PDF tables to `POST /api/v1/data/upload` as multipart form field `file`. Uploads are limited to 20 MiB. The parser maps recognized headers, requires village and district for each accepted row, validates available values, and returns detected/mapped/unmapped columns plus row-level validation messages. Missing service or historical fields remain missing; no source data is fabricated. PDFs without an extractable table require a structured table source; OCR and document interpretation are not enabled.
+
+Uploads and accepted normalized rows are stored separately from `public.villages` in `public.data_uploads` and `public.imported_data_rows`. The original file is not retained. Use `GET /api/v1/data/uploads` and `GET /api/v1/data/uploads/{upload_id}` for import metadata, and `GET /api/v1/data/uploads/{upload_id}/rows` to page through accepted normalized rows. Upload metadata is scoped to the uploader's assigned district/block; state-admin imports are visible to state admins only. Existing dashboard, village, analytics, and anomaly endpoints continue to use the existing village dataset.
+
+After applying the users migration, apply the additive upload migration:
+
+```powershell
+Get-Content -Raw backend\database\migrations\002_create_data_uploads.sql | docker compose exec -T db psql -U sevaai -d sevaai_manipur
+```
+
 ## Prerequisites
 
 - Docker Desktop (or Docker Engine) with the Compose plugin

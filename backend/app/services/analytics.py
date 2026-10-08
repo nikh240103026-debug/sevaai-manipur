@@ -53,7 +53,7 @@ class VillageAnalyticsSource(Protocol):
     village_id: str
     village: str
     district: str
-    block: str
+    block: str | None
     housing_coverage: Decimal
     health_coverage: Decimal
     water_coverage: Decimal
@@ -70,7 +70,7 @@ class VillageAnalyticsInput:
     village_id: str
     village: str
     district: str
-    block: str
+    block: str | None
     housing_coverage: Decimal
     health_coverage: Decimal
     water_coverage: Decimal

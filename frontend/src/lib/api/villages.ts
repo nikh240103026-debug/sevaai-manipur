@@ -2,6 +2,7 @@ import { apiRequest } from "@/lib/client";
 import type {
   DistrictList,
   Village,
+  VillageAnalytics,
   VillageMapPoint,
   VillagePage,
   VillageQuery,
@@ -48,6 +49,17 @@ export async function getVillage(villageId: string): Promise<Village> {
 
   return apiRequest<Village>(
     `${API_PREFIX}/villages/${encodeURIComponent(villageId.trim())}`,
+  );
+}
+
+export async function getVillageAnalytics(
+  villageId: string,
+): Promise<VillageAnalytics> {
+  if (!villageId.trim()) {
+    throw new Error("Village ID is required.");
+  }
+  return apiRequest<VillageAnalytics>(
+    `${API_PREFIX}/analytics/villages/${encodeURIComponent(villageId.trim())}`,
   );
 }
 

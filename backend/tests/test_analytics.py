@@ -211,6 +211,18 @@ class AnalyticsSession:
             return self.village
         return None
 
+    def scalars(self, statement: Any) -> Any:
+        from app.models.data_upload import DataUpload
+
+        if self.fail:
+            raise SQLAlchemyError("simulated database query failure")
+        entity = statement.column_descriptions[0].get("entity")
+        return type(
+            "ScalarResult",
+            (),
+            {"all": lambda _self: [] if entity is DataUpload else [self.village] if self.village else []},
+        )()
+
 
 @pytest.fixture
 def analytics_client() -> Any:
@@ -246,13 +258,15 @@ def test_village_analytics_endpoint(analytics_client: Any) -> None:
         "village": "Bishnupur Demo Village 001",
         "district": "Bishnupur",
         "block": "Bishnupur",
-        "housing_gap": "20.00",
-        "health_gap": "20.00",
-        "water_gap": "20.00",
-        "welfare_gap": "20.00",
-        "pending_rate": "10.00",
-        "priority_score": "24.25",
+        "housing_gap": 20.0,
+        "health_gap": 20.0,
+        "water_gap": 20.0,
+        "welfare_gap": 20.0,
+        "pending_rate": 10.0,
+        "priority_score": 24.25,
         "priority_level": "LOW",
+        "available": True,
+        "unavailable_reason": None,
     }
 
 

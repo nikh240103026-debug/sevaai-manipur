@@ -76,34 +76,34 @@ class AnomalySource(Protocol):
     def district(self) -> str: ...
 
     @property
-    def block(self) -> str: ...
+    def block(self) -> str | None: ...
 
     @property
-    def housing_coverage(self) -> Decimal | float: ...
+    def housing_coverage(self) -> Decimal | float | None: ...
 
     @property
-    def health_coverage(self) -> Decimal | float: ...
+    def health_coverage(self) -> Decimal | float | None: ...
 
     @property
-    def water_coverage(self) -> Decimal | float: ...
+    def water_coverage(self) -> Decimal | float | None: ...
 
     @property
-    def welfare_coverage(self) -> Decimal | float: ...
+    def welfare_coverage(self) -> Decimal | float | None: ...
 
     @property
-    def pending_rate(self) -> Decimal | float: ...
+    def pending_rate(self) -> Decimal | float | None: ...
 
     @property
-    def historical_housing_coverage(self) -> Decimal | float: ...
+    def historical_housing_coverage(self) -> Decimal | float | None: ...
 
     @property
-    def historical_health_coverage(self) -> Decimal | float: ...
+    def historical_health_coverage(self) -> Decimal | float | None: ...
 
     @property
-    def historical_water_coverage(self) -> Decimal | float: ...
+    def historical_water_coverage(self) -> Decimal | float | None: ...
 
     @property
-    def historical_welfare_coverage(self) -> Decimal | float: ...
+    def historical_welfare_coverage(self) -> Decimal | float | None: ...
 
 
 @dataclass(frozen=True)
@@ -128,16 +128,18 @@ _cached_fingerprint: tuple[tuple[str, str, str, str, tuple[float, ...]], ...] | 
 _cached_results: tuple[VillageAnomaly, ...] = ()
 
 
-def _value(value: Decimal | float) -> float:
+def _value(value: Decimal | float | None) -> float:
+    if value is None:
+        raise ValueError("Anomaly feature values must be available.")
     return float(value)
 
 
-def _snapshot_village(village: Village) -> VillageAnomalySource:
+def _snapshot_village(village: AnomalySource) -> VillageAnomalySource:
     return VillageAnomalySource(
         village_id=str(village.village_id),
         village=str(village.village),
         district=str(village.district),
-        block=str(village.block),
+        block=village.block or "",
         housing_coverage=float(village.housing_coverage),
         health_coverage=float(village.health_coverage),
         water_coverage=float(village.water_coverage),
@@ -343,41 +345,90 @@ def _evaluate_population(
 def list_village_anomalies(
     db: Session,
     *,
+    villages: Sequence[AnomalySource] | None = None,
     district: str | None = None,
     anomaly_only: bool = False,
-    limit: int = 50,
+    limit: int | None = 50,
+    minimum_population: int = 1,
 ) -> list[VillageAnomaly]:
     """Evaluate all villages, then apply response filters and the result limit."""
-    villages = [
+    population = list(villages) if villages is not None else [
         _snapshot_village(village)
         for village in db.scalars(select(Village).order_by(Village.village_id)).all()
     ]
-    results = _evaluate_population(villages)
+    available_population = [
+        village for village in population
+        if all(getattr(village, field, None) is not None for field in FEATURE_INPUT_FIELDS)
+    ]
+    insufficient_population = len(available_population) < minimum_population
+    results = (
+        []
+        if insufficient_population
+        else list(_evaluate_population(available_population))
+    )
+    if villages is not None:
+        available_ids = {result.village_id for result in results}
+        results.extend(
+            VillageAnomaly(
+                village_id=village.village_id,
+                village=village.village,
+                district=village.district,
+                block=village.block or "",
+                anomaly_score=None,
+                anomaly_status=AnomalyStatus.UNAVAILABLE,
+                reason_codes=[],
+                explanation=(
+                    "Anomaly analysis is unavailable because fewer than two "
+                    "records contain all required analytical inputs."
+                    if insufficient_population
+                    else "Anomaly analysis is unavailable because this record lacks "
+                    "current, historical, or pending-rate data."
+                ),
+                available=False,
+            )
+            for village in population
+            if village.village_id not in available_ids
+        )
     if district is not None:
         target_district = district.strip().casefold()
         results = [
             result for result in results
             if result.district.casefold() == target_district
         ]
+    results.sort(key=lambda result: result.village_id)
     if anomaly_only:
         results = [
             result
             for result in results
             if result.anomaly_status == AnomalyStatus.UNUSUAL
         ]
-    return list(results[:limit])
+    return list(results if limit is None else results[:limit])
 
 
-def get_village_anomaly(db: Session, village_id: str) -> VillageAnomaly | None:
+FEATURE_INPUT_FIELDS = BASE_FEATURE_NAMES
+
+
+def get_village_anomaly(
+    db: Session,
+    village_id: str,
+    *,
+    villages: Sequence[AnomalySource] | None = None,
+    minimum_population: int = 1,
+) -> VillageAnomaly | None:
     """Return one village's result after comparing it with the full population."""
-    villages = [
+    population = list(villages) if villages is not None else [
         _snapshot_village(village)
         for village in db.scalars(select(Village).order_by(Village.village_id)).all()
     ]
     return next(
         (
             result
-            for result in _evaluate_population(villages)
+            for result in list_village_anomalies(
+                db,
+                villages=population,
+                limit=None,
+                minimum_population=minimum_population,
+            )
             if result.village_id == village_id
         ),
         None,

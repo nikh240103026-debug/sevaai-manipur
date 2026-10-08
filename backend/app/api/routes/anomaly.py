@@ -5,7 +5,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
-    authorize_block_access,
     authorize_district_access,
     require_authenticated_user,
 )
@@ -13,6 +12,7 @@ from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.schemas.anomaly import VillageAnomaly
 from app.services.anomaly import get_village_anomaly, list_village_anomalies
+from app.services.dataset import get_active_dataset
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -30,9 +30,9 @@ def _database_error() -> HTTPException:
     "/ai/anomalies",
     response_model=list[VillageAnomaly],
     description=(
-        "Unsupervised, deterministic Isolation Forest signals across the "
-        "available synthetic village dataset. Unusual does not mean fraud or "
-        "wrongdoing; results are for decision support only."
+        "Unsupervised Isolation Forest signals from the active dataset. "
+        "Unavailable inputs are explicitly marked. Unusual does not mean "
+        "fraud or wrongdoing; results are for decision support only."
     ),
 )
 def list_anomalies(
@@ -48,11 +48,16 @@ def list_anomalies(
             authorize_district_access(user, district)
         effective_district = user.district
     try:
+        dataset = get_active_dataset(db, user)
         results = list_village_anomalies(
             db,
+            villages=dataset.villages,
             district=effective_district,
             anomaly_only=anomaly_only,
-            limit=10000,
+            limit=None,
+            minimum_population=(
+                2 if dataset.mode == "GOVERNMENT_UPLOAD" else 1
+            ),
         )
     except SQLAlchemyError as exc:
         raise _database_error() from exc
@@ -72,7 +77,15 @@ def village_anomaly(
     db: Session = Depends(get_db),
 ) -> VillageAnomaly:
     try:
-        result = get_village_anomaly(db, village_id)
+        dataset = get_active_dataset(db, user)
+        result = get_village_anomaly(
+            db,
+            village_id,
+            villages=dataset.villages,
+            minimum_population=(
+                2 if dataset.mode == "GOVERNMENT_UPLOAD" else 1
+            ),
+        )
     except SQLAlchemyError as exc:
         raise _database_error() from exc
     if result is None:
@@ -80,5 +93,4 @@ def village_anomaly(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Village not found",
         )
-    authorize_block_access(user, result.district, result.block)
     return result

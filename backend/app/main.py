@@ -9,9 +9,11 @@ from app.api.routes.analytics import router as analytics_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.anomaly import router as anomaly_router
 from app.api.routes.villages import router as villages_router
+from app.api.routes.data import router as data_router
 from app.core.config import get_settings
 from app.db.database import get_engine
 from app.schemas.village import HealthResponse
+from app.api.routes import dashboard
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -36,6 +38,8 @@ app.include_router(villages_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(anomaly_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(dashboard.router, prefix="/api/v1")
+app.include_router(data_router, prefix="/api/v1")
 
 
 @app.get("/")
