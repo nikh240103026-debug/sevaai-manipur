@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgis/postgis:16-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sevaai_manipur}
+      POSTGRES_USER: ${POSTGRES_USER:-sevaai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - sevaai_postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+      - ./backend/database/import_csv.sh:/database/import_csv.sh:ro
+      - ./backend/database/verify_database.sh:/database/verify_database.sh:ro
+      - ./backend/database/verify.sql:/database/verify.sql:ro
+      - ./data/raw/sevaai_demo_data.csv:/seed/sevaai_demo_data.csv:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\"",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  sevaai_postgres_data:

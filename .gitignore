@@ -50,5 +50,6 @@ ml/models/
 # Local datasets (keep folder placeholders)
 data/raw/*
 !data/raw/.gitkeep
+!data/raw/sevaai_demo_data.csv
 data/processed/*
 !data/processed/.gitkeep
