@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SevaAI Manipur",
+  title: "Dashboard | SevaAI Manipur",
   description:
-    "AI-Powered Welfare & Public Service Gap Intelligence Platform",
+    "Synthetic demo dashboard for welfare and public service gap intelligence in Manipur.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
