@@ -6,8 +6,14 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import (
+    authorize_village_access,
+    require_authenticated_user,
+    village_scope_filters,
+)
 from app.db.database import get_db
 from app.models.village import Village
+from app.models.user import User
 from app.schemas.village import (
     DistrictList,
     VillageMapPoint,
@@ -33,28 +39,27 @@ def list_villages(
     limit: int = Query(default=50, ge=1, le=100),
     district: str | None = Query(default=None, min_length=1, max_length=100),
     block: str | None = Query(default=None, min_length=1, max_length=100),
+    user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db),
 ) -> VillagePage:
-    filters = []
-    if district is not None:
-        filters.append(func.lower(Village.district) == district.strip().lower())
-    if block is not None:
-        filters.append(func.lower(Village.block) == block.strip().lower())
+    filters = village_scope_filters(user, district=district, block=block)
 
     try:
         total = db.scalar(select(func.count()).select_from(Village).where(*filters)) or 0
-        items = db.scalars(
-            select(Village)
-            .where(*filters)
-            .order_by(Village.village_id)
-            .offset((page - 1) * limit)
-            .limit(limit)
-        ).all()
+        items = list(
+            db.scalars(
+                select(Village)
+                .where(*filters)
+                .order_by(Village.village_id)
+                .offset((page - 1) * limit)
+                .limit(limit)
+            ).all()
+        )
     except SQLAlchemyError as exc:
         raise _database_error() from exc
 
     return VillagePage(
-        items=items,
+        items=[VillageResponse.model_validate(item) for item in items],
         page=page,
         limit=limit,
         total=total,
@@ -63,7 +68,11 @@ def list_villages(
 
 
 @router.get("/villages/{village_id}", response_model=VillageResponse)
-def get_village(village_id: str, db: Session = Depends(get_db)) -> Village:
+def get_village(
+    village_id: str,
+    user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db),
+) -> Village:
     try:
         village = db.get(Village, village_id)
     except SQLAlchemyError as exc:
@@ -73,22 +82,32 @@ def get_village(village_id: str, db: Session = Depends(get_db)) -> Village:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Village not found",
         )
+    authorize_village_access(user, village)
     return village
 
 
 @router.get("/districts", response_model=DistrictList)
-def list_districts(db: Session = Depends(get_db)) -> DistrictList:
+def list_districts(
+    user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db),
+) -> DistrictList:
     try:
         districts = db.scalars(
-            select(Village.district).distinct().order_by(Village.district)
+            select(Village.district)
+            .where(*village_scope_filters(user))
+            .distinct()
+            .order_by(Village.district)
         ).all()
     except SQLAlchemyError as exc:
         raise _database_error() from exc
-    return DistrictList(districts=districts)
+    return DistrictList(districts=list(districts))
 
 
 @router.get("/map/villages", response_model=list[VillageMapPoint])
-def list_village_map_points(db: Session = Depends(get_db)) -> list[VillageMapPoint]:
+def list_village_map_points(
+    user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db),
+) -> list[VillageMapPoint]:
     try:
         rows = db.execute(
             select(
@@ -98,7 +117,9 @@ def list_village_map_points(db: Session = Depends(get_db)) -> list[VillageMapPoi
                 Village.block,
                 Village.latitude,
                 Village.longitude,
-            ).order_by(Village.village_id)
+            )
+            .where(*village_scope_filters(user))
+            .order_by(Village.village_id)
         ).all()
     except SQLAlchemyError as exc:
         raise _database_error() from exc
