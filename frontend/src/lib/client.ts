@@ -1,9 +1,27 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
 
-if (!API_URL) {
+if (!configuredApiUrl) {
   throw new Error(
     "NEXT_PUBLIC_API_URL is not configured. Add it to the frontend environment."
   );
+}
+
+const API_URL: string = configuredApiUrl;
+
+function getApiBaseUrl(): string {
+  if (typeof window === "undefined") return API_URL;
+
+  const url = new URL(API_URL);
+  const isLoopback = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  const pageIsLoopback =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
+
+  if (isLoopback && pageIsLoopback) {
+    url.hostname = window.location.hostname;
+  }
+
+  return url.toString().replace(/\/+$/, "");
 }
 
 export class ApiError extends Error {
@@ -35,7 +53,7 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
 
-  const response = await fetch(`${API_URL}${normalizedPath}`, {
+  const response = await fetch(`${getApiBaseUrl()}${normalizedPath}`, {
     ...options,
     credentials: options?.credentials ?? "include",
     headers: {
