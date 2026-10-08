@@ -1,5 +1,5 @@
-import Dashboard from "../page";
+import DashboardPage from "@/components/dashboard-page";
 
 export default function DashboardRoute() {
-  return <Dashboard />;
+  return <DashboardPage />;
 }

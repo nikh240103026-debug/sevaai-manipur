@@ -76,14 +76,14 @@ export function AppShell({
           <div className="sidebar-help">
             <div className="help-icon" aria-hidden="true">✳</div>
             <strong>Built for better decisions</strong>
-            <p>Demo insights are synthetic and for exploration only.</p>
+            <p>Live village coverage and pending-case indicators from connected APIs.</p>
             <Link href="/login">Sign out <span aria-hidden="true">↗</span></Link>
           </div>
           <div className="profile">
             <div className="avatar">AD</div>
             <div className="profile-copy">
-              <strong>Admin Demo</strong>
-              <span>State administrator</span>
+              <strong>Authenticated user</strong>
+              <span>Signed in through the API</span>
             </div>
           </div>
         </div>
@@ -107,8 +107,8 @@ export function AppShell({
             </div>
           </div>
           <div className="topbar-actions">
-            <span className="topbar-date">Reporting period <strong>Mar 2025</strong></span>
-            <span className="demo-topbar-badge">DEMO DATA</span>
+            <span className="topbar-date">Data source <strong>FastAPI</strong></span>
+            <span className="demo-topbar-badge">LIVE API</span>
           </div>
         </header>
         <div className="dashboard-content">{children}</div>

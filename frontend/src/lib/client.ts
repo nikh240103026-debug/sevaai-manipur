@@ -37,6 +37,7 @@ export async function apiRequest<T>(
 
   const response = await fetch(`${API_URL}${normalizedPath}`, {
     ...options,
+    credentials: options?.credentials ?? "include",
     headers: {
       Accept: "application/json",
       ...options?.headers,

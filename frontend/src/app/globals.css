@@ -2915,3 +2915,58 @@ button {
     transition-duration: .01ms !important;
   }
 }
+
+.data-state {
+  margin: 16px 0;
+  padding: 18px 20px;
+  color: #69758b;
+  font-size: 13px;
+}
+
+.data-state-error {
+  color: #a33b42;
+  border-color: #f1c9ca;
+  background: #fff8f8;
+}
+
+.data-note {
+  margin: 10px 0 0;
+  color: #7f899b;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.anomaly-disclaimer {
+  margin: 12px 0;
+  padding: 12px 14px;
+  color: #765b2c;
+  background: #fff8e9;
+  border: 1px solid #f0e1bf;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.anomaly-disclaimer strong {
+  margin-right: 4px;
+}
+
+.alert-card .alert-card-content ul {
+  margin: 6px 0 14px;
+  padding-left: 20px;
+  color: #626e82;
+  line-height: 1.7;
+}
+
+.alert-card .alert-card-content > .section-eyebrow {
+  margin-top: 12px;
+}
+
+.leaflet-popup-content {
+  line-height: 1.65;
+}
+
+.leaflet-popup-content a {
+  color: #4e5fbd;
+  font-weight: 650;
+}
