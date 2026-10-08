@@ -1,5 +1,6 @@
 """Deterministic prototype analytics, not official government classifications."""
 
+from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Protocol
 
@@ -49,6 +50,23 @@ def _clamp_score(score: Decimal) -> Decimal:
 
 
 class VillageAnalyticsSource(Protocol):
+    village_id: str
+    village: str
+    district: str
+    block: str
+    housing_coverage: Decimal
+    health_coverage: Decimal
+    water_coverage: Decimal
+    welfare_coverage: Decimal
+    historical_housing_coverage: Decimal
+    historical_health_coverage: Decimal
+    historical_water_coverage: Decimal
+    historical_welfare_coverage: Decimal
+    pending_rate: Decimal
+
+
+@dataclass
+class VillageAnalyticsInput:
     village_id: str
     village: str
     district: str
