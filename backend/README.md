@@ -1,10 +1,45 @@
 # SevaAI Manipur backend
 
-This backend currently provides the minimal FastAPI API foundation and the PostgreSQL/PostGIS schema connection. Authentication, AI/ML, analytics, interventions, alerts, and production government data integration are out of scope.
+This backend currently provides a FastAPI API, PostgreSQL/PostGIS data layer, JWT authentication with role-based access control, prototype analytics, and a deterministic anomaly-detection signal. Interventions, alerts, and production government data integration are out of scope.
 
 ## Synthetic data warning
 
 The imported `villages` rows come from [`../data/raw/sevaai_demo_data.csv`](../data/raw/sevaai_demo_data.csv). Service and beneficiary-related values are synthetic. Village names, local-council groupings, identifiers, and coordinates are synthetic; coordinates are approximate demonstration points, not surveyed locations. The data must not be represented as actual government statistics or used for operational decisions. It contains no real beneficiary PII.
+
+## AI anomaly signals
+
+`GET /api/v1/ai/anomalies` compares service coverage, pending rates, historical coverage, and positive historical deterioration across the available village population using an unsupervised Isolation Forest. The fixed estimator count and random state make results reproducible for an unchanged dataset. `GET /api/v1/ai/anomalies/{village_id}` returns the same population-relative result for one village. Optional list filters include `district`, `limit`, and `anomaly_only`.
+
+An `UNUSUAL` classification is not fraud, corruption, or wrongdoing. Scores and deterministic reason codes are decision-support signals only, and the current village dataset is synthetic/demo data. The in-process service reuses evaluated results while village feature values remain unchanged; each application worker maintains its own cache.
+
+## Authentication and roles
+
+Village, district, map, analytics, and AI anomaly endpoints require a bearer access token. `POST /api/v1/auth/login` accepts a username and password and returns a signed JWT; send it as `Authorization: Bearer <access_token>`. `GET /api/v1/auth/me` returns the authenticated account without its password hash. `/`, `/health`, and the login endpoint remain public.
+
+The roles are:
+
+- `STATE_ADMIN`: unrestricted access.
+- `DISTRICT_OFFICER`: only data for the account's assigned district.
+- `BLOCK_OFFICER`: only data for the assigned district and block.
+
+The same scope restrictions apply to list filters, detail records, district lists, maps, analytics, and anomaly results. Requests for records outside the assigned scope return HTTP 403. Inactive accounts cannot log in or use tokens.
+
+Configure `JWT_SECRET_KEY`, `JWT_ALGORITHM`, and `ACCESS_TOKEN_EXPIRE_MINUTES` in the ignored local `.env` file. Generate a random secret of at least 32 bytes (for example, `openssl rand -hex 32`); never use the blank/example value in a shared environment or commit a secret. The MVP accepts HS256 and defaults tokens to 30 minutes. Restart the API after changing the environment.
+
+Apply the additive user-table migration once to an existing database; it creates only `public.users` and leaves the `villages` table and its rows untouched:
+
+```powershell
+Get-Content -Raw backend\database\migrations\001_create_users.sql | docker compose exec -T db psql -U sevaai -d sevaai_manipur
+```
+
+Create the initial administrator and other accounts interactively so passwords are not placed in shell history or command-line arguments. From the repository root:
+
+```powershell
+Set-Location backend
+.\.venv\Scripts\python.exe -m scripts.create_user --username admin --full-name "State Administrator" --role STATE_ADMIN
+```
+
+For a district officer, also pass `--district "District Name"`; for a block officer, pass both `--district "District Name"` and `--block "Block Name"`. The script prompts for a matching password of at least 12 characters and stores only its Argon2 hash. No demo account or default password is created.
 
 ## Prerequisites
 
