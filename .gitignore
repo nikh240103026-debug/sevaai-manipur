@@ -1,0 +1,54 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.example
+*.secret
+secrets/
+credentials/
+credentials.json
+*_credentials.json
+*service-account*.json
+id_rsa*
+id_ed25519*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Node.js / Next.js
+node_modules/
+.next/
+out/
+dist/
+.vercel/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# IDEs
+.vscode/
+.idea/
+
+# Operating systems
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Generated machine learning artifacts
+ml/models/
+*.pkl
+*.joblib
+
+# Local datasets (keep folder placeholders)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
