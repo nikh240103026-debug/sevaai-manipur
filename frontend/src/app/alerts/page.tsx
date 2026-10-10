@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeading } from "@/components/app-shell";
-import { ApiError, apiRequest } from "@/lib/client";
+import { ApiError, apiRequest } from "@/lib/api/client";
 type AnomalyRecord = {
   village_id: string;
   village: string;

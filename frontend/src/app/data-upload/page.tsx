@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import Link from "next/link";
 import { AppShell, PageHeading } from "@/components/app-shell";
-import { ApiError } from "@/lib/client";
+import { ApiError } from "@/lib/api/client";
 import {
   getUpload,
   getUploadRows,

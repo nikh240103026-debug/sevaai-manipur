@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { ApiError } from "@/lib/client";
+import { ApiError } from "@/lib/api/client";
 import { getCurrentUser, login } from "@/lib/auth";
 
 export default function LoginPage() {

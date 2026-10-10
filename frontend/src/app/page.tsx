@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
-import { ApiError, apiRequest } from "@/lib/client";
+import { ApiError, apiRequest } from "@/lib/api/client";
 import { getActiveDataset } from "@/lib/api/data-upload";
 import type { ActiveDataset } from "@/types/data-upload";
 import type {

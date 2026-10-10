@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell, PageHeading } from "@/components/app-shell";
 import { getVillage, getVillageAnalytics } from "@/lib/api/villages";
-import { ApiError } from "@/lib/client";
+import { ApiError } from "@/lib/api/client";
 import type { Village, VillageAnalytics } from "@/types/village";
 
 const serviceColors = ["#6274ed", "#54a1eb", "#3fb6a4", "#9a7be7"];

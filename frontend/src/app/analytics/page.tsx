@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeading } from "@/components/app-shell";
 import { getVillages } from "@/lib/api/villages";
-import { ApiError, apiRequest } from "@/lib/client";
+import { ApiError, apiRequest } from "@/lib/api/client";
 import type { DashboardSummary } from "@/types/dashboard";
 import type { Village } from "@/types/village";
 

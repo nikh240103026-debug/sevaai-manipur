@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeading } from "@/components/app-shell";
 import { getDistricts, getVillages } from "@/lib/api/villages";
-import { ApiError } from "@/lib/client";
+import { ApiError } from "@/lib/api/client";
 import type { Village } from "@/types/village";
 
 const PAGE_SIZE = 50;
